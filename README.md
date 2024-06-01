@@ -6,6 +6,7 @@ tracing farmers irrigation decision using satellite observations
 
 AgroTrack is a Python package designed to trace farmers' irrigation decisions using satellite-observed thermal signatures. By leveraging advanced satellite data processing techniques, AgroTrack offers precise and scalable tools for mapping irrigated areas, detecting the start and end of the irrigation season and individual irrigation events.
 
+
 ## Features
 
 - **Delta LST Calculation**: Utilize MODIS land surface temperature data to identify irrigation events based on the temperature difference between irrigated and natural pixels.
