@@ -1,6 +1,6 @@
 # AgroTrack
 
-<img align="right" width="100" src="path_to_your_logo/logo.png">
+<img align="right" width="100" src="https://github.com/ejalilva/AgroTrack/blob/master/AGRotrack.png">
 
 tracing farmers irrigation decision using satellite observations
 
