@@ -1,6 +1,6 @@
 # AgroTrack
 
-<img align="right" width="200" src="https://github.com/ejalilva/AgroTrack/blob/master/AGRotrack.png">
+<img align="right" width="200" src="https://github.com/ejalilva/AgroTrack/blob/master/static/AgroTrack.png">
 
 tracing farmers irrigation decision using satellite observations
 
@@ -11,7 +11,7 @@ AgroTrack is a Python package designed to trace farmers' irrigation decisions us
 
 - **Delta LST Calculation**: Utilize MODIS land surface temperature data to identify irrigation events based on the temperature difference between irrigated and natural land covers.
 - **Change Point Detection**: Apply advanced algorithms from Ruptures package to determine the start and end of irrigation seasons and each individual irrigation events.
-- **Integration with Google Earth Engine**: Use the XEE (Xarray extension for GEE) to manage read the data from GEE catalog and create Xarray datacube.
+- **Integration with Google Earth Engine**: Use the XEE (Xarray extension for GEE) to manage read the data from GEE catalog and create a Xarray datacube.
 - **Scalability**: Leverage Dask and Xarray-Beam for efficient parallel processing.
 - **Evaluation Metrics**: Implement confusion matrix and evaluation metrics using sci-kit to assess timing estimation accuracy.
 
@@ -20,4 +20,4 @@ AgroTrack is a Python package designed to trace farmers' irrigation decisions us
 To install AgroTrack, use the following command:
 
 ```bash
-pip install agrotrack
+pip install agrotrackThere a
