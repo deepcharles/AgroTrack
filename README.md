@@ -20,4 +20,4 @@ AgroTrack is a Python package designed to trace farmers' irrigation decisions us
 To install AgroTrack, use the following command:
 
 ```bash
-pip install agrotrackThere a
+pip install agrotrack
