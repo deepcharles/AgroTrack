@@ -223,7 +223,7 @@ def create_dem(bounding_box,save_dir=None, to_nc=False):
     return ds
 
 
-def buffer_nir_lst(bounding_box,lc,lst, max_radius = 15, add_plot = False, plot_time = None, save_dir=None, max_elev_diff = 100, to_nc=False):
+def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, add_plot = False, plot_time = None, save_dir=None, max_elev_diff = 100, to_nc=False):
     non_irrigated_lc_type = [8,9,10,16] # 8 Woody Savannas, 9 Savannas, 10 Grasslands, 16 Barren or Sparsely Vegetated
     buffer_zone = 1
     masks = []
@@ -300,13 +300,13 @@ def buffer_nir_lst(bounding_box,lc,lst, max_radius = 15, add_plot = False, plot_
         baseLST_comb.sel(time = plot_time).plot(x="lon", y="lat", col="radius", col_wrap=col_num,figsize = [col_num*4,10],cmap = 'Oranges')
     base_LST = base_LST.rename('lst_nir')
     base_radius = base_radius.rename('searchRadius')
-    nir_lst_radius = xr.combine_by_coords([base_LST, base_radius])
+    lst_natural_lc = xr.combine_by_coords([base_LST, base_radius])
     if to_nc == True:
         if os.path.exists(save_dir):
             bash_cmd = f'rm -r {save_dir}'
             subprocess.Popen(bash_cmd.split())
-        nir_lst_radius.to_netcdf(path = save_dir,mode='w', format='NETCDF4', engine='netcdf4')
-    return nir_lst_radius
+        lst_natural_lc.to_netcdf(path = save_dir,mode='w', format='NETCDF4', engine='netcdf4')
+    return lst_natural_lc
 
 def irrigation_mapping_with_deltaLST(delta_lst,lc,thereshold = -2, add_plot = True):
     from matplotlib.colors import ListedColormap, LinearSegmentedColormap
