@@ -223,7 +223,38 @@ def create_dem(bounding_box,save_dir=None, to_nc=False):
     return ds
 
 
-def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, add_plot = False, plot_time = None, save_dir=None, max_elev_diff = 100, to_nc=False):
+def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, max_elev_diff = 100, add_plot = False, plot_time = None, to_nc=False, save_dir=None):
+    """
+    Process each pixel to find and average the land surface temperature (LST) from the surrounding natural land cover pixel(s).
+    
+    This function evaluate each pixel in the provided area. For every pixel, it identifies neighbouring pixels that are classified as natural land cover starting from the immediate neighbouring pixels and extending the radius of the search as far as it find at least one natural pixel or reach to the maximum radius of search defined in km by the user (which ever comes first). It then calculate the average LST of all identified natural land cover pixels and assign its value to the original pixel.
+    
+    Parameters:
+    
+    bounding_box = a list defining the bounding box with lower left and upper right latitude and longitude with the following order:
+    [lower_left_lon, lower_left_lat,upper_right_lon,upper_right_lat]
+    
+    lc: MODIS annual land cover map xarray dataset (output of the xr.open_dataset)
+    
+    lst: MODIS LST xarray dataset (output of the xr.open_dataset)
+    
+    Max_radius: maximum radius of search for the natural pixel in km
+    
+    max_elev_diff: the maximum valid elevation difference between the original and natural land cover pixel
+    
+    add_plot: [True or False] option to add a plot that shows the radius of search for each pixel and the resulting natural pixels LST map. the map shows all the iteration of searching for the natural pixel and assigning the natural pixels lst to the original pixel.
+    
+    plot_time: the date to create the above plot for it
+    
+    to_nc: [True or False] create a nc file or not 
+    
+    save_dir: [string directory] The directory to save the out put natural pixel lst nc file
+    
+    Return:
+    
+    lst_natural_lc: [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    """
     non_irrigated_lc_type = [8,9,10,16] # 8 Woody Savannas, 9 Savannas, 10 Grasslands, 16 Barren or Sparsely Vegetated
     buffer_zone = 1
     masks = []
