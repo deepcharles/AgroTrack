@@ -456,6 +456,25 @@ def irrigation_season_mapping(delta_lst,lc,start_time , end_time, model = 'l2',a
     return ir_season_start, ir_season_end, ir_season_duration
 
 def extract_stations_timeseries(lst_ir,lst_nir,st_info,year):
+    '''
+    extract four different LST time series for each pixel, namely (original LST, natural pixel LST, delta LST and Delta LST with nan values removed and store them in a single xarray dataset 
+    
+    Parameters:
+    
+    lst_ir = the lst of the original pixel 
+    
+    lst_nir: the lst of the natural pixel assigned to the original pixel
+    
+    st_info: [Pandas DataFrame] a data frame with three columns {'name','lat','lon'}
+    
+    year: the year for which the timeseries will be extracted
+    
+    
+    Return:
+    
+    st_data: [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    '''
     lat = st_info['lat']
     lon = st_info['lon']
     delta_lst = lst_ir-lst_nir
@@ -472,7 +491,26 @@ def extract_stations_timeseries(lst_ir,lst_nir,st_info,year):
     st_data = xr.combine_by_coords([lst_ir_st,lst_nir_st,delta_lst_st,delta_lst_nonan_st])
     return st_data
 def irrigation_season_timing(st_data,st_info,model = 'l2',add_plot = True):
-    stid = st_info['canal']
+    '''
+    determine the start and end of the irrigation season in the pixel using  binary change point detection algorithm from ruptures package to perform fast signal segmentation
+    
+    Parameters:
+    
+    st_data = [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    st_info: [Pandas DataFrame] a data frame with three columns {'name','lat','lon'}
+    
+    model: cost function usded for detection of break points, default 'l2' (This cost function detects mean-shifts in a signal) other options: "l2"  # "l1", "rbf", "linear", "normal", "ar"
+    
+    add_plot: [True or False] option to add a plot that shows the lst of original pixel, natural pixel assigned to the origainal pixel and the delta LST + two lines indicating the start and the end of the irrigation season
+    
+    
+    Return:
+    
+    bp0,bp1: [date] start (bp0) and the end (bp1) of the irrigation season
+    
+    '''
+    stid = st_info['name']
     algo = rpt.Binseg(model=model).fit(st_data.delta_lst_nonan_st.values)
     my_bkps = algo.predict(n_bkps=2)
     
@@ -505,7 +543,7 @@ def irrigation_season_timing(st_data,st_info,model = 'l2',add_plot = True):
     return bp0,bp1
         
 def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigation, model = 'l2', penalty = 1, min_seg_size = 3, segmentation_method = 'mean', add_plot = True): 
-    stid = st_info['canal']
+    stid = st_info['name']
 
     bp0,bp1 = irrigation_season_timing(st_data, st_info, model = 'l2', add_plot = False)
     diff_lst_ir_season = st_data.delta_lst_nonan_st.sel(time=slice(bp0,bp1)) # slicing the time series for the irrigation period
