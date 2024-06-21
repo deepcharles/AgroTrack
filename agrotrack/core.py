@@ -2,7 +2,6 @@ import os
 import glob
 import xarray as xr
 from datetime import datetime
-import os
 import numpy as np
 import subprocess
 import matplotlib as mpl

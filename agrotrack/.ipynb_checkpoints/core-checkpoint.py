@@ -2,7 +2,6 @@ import os
 import glob
 import xarray as xr
 from datetime import datetime
-import os
 import numpy as np
 import subprocess
 import matplotlib as mpl
@@ -223,7 +222,38 @@ def create_dem(bounding_box,save_dir=None, to_nc=False):
     return ds
 
 
-def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, add_plot = False, plot_time = None, save_dir=None, max_elev_diff = 100, to_nc=False):
+def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, max_elev_diff = 100, add_plot = False, plot_time = None, to_nc=False, save_dir=None):
+    """
+    Process each pixel to find and average the land surface temperature (LST) from the surrounding natural land cover pixel(s).
+    
+    This function evaluate each pixel in the provided area. For every pixel, it identifies neighbouring pixels that are classified as natural land cover starting from the immediate neighbouring pixels and extending the radius of the search as far as it find at least one natural pixel or reach to the maximum radius of search defined in km by the user (which ever comes first). It then calculate the average LST of all identified natural land cover pixels and assign its value to the original pixel.
+    
+    Parameters:
+    
+    bounding_box = a list defining the bounding box with lower left and upper right latitude and longitude with the following order:
+    [lower_left_lon, lower_left_lat,upper_right_lon,upper_right_lat]
+    
+    lc: MODIS annual land cover map xarray dataset (output of the xr.open_dataset)
+    
+    lst: MODIS LST xarray dataset (output of the xr.open_dataset)
+    
+    Max_radius: maximum radius of search for the natural pixel in km
+    
+    max_elev_diff: the maximum valid elevation difference between the original and natural land cover pixel
+    
+    add_plot: [True or False] option to add a plot that shows the radius of search for each pixel and the resulting natural pixels LST map. the map shows all the iteration of searching for the natural pixel and assigning the natural pixels lst to the original pixel.
+    
+    plot_time: the date to create the above plot for it
+    
+    to_nc: [True or False] create a nc file or not 
+    
+    save_dir: [string directory] The directory to save the out put natural pixel lst nc file
+    
+    Return:
+    
+    lst_natural_lc: [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    """
     non_irrigated_lc_type = [8,9,10,16] # 8 Woody Savannas, 9 Savannas, 10 Grasslands, 16 Barren or Sparsely Vegetated
     buffer_zone = 1
     masks = []
@@ -425,6 +455,25 @@ def irrigation_season_mapping(delta_lst,lc,start_time , end_time, model = 'l2',a
     return ir_season_start, ir_season_end, ir_season_duration
 
 def extract_stations_timeseries(lst_ir,lst_nir,st_info,year):
+    '''
+    extract four different LST time series for each pixel, namely (original LST, natural pixel LST, delta LST and Delta LST with nan values removed and store them in a single xarray dataset 
+    
+    Parameters:
+    
+    lst_ir = the lst of the original pixel 
+    
+    lst_nir: the lst of the natural pixel assigned to the original pixel
+    
+    st_info: [Pandas DataFrame] a data frame with three columns {'name','lat','lon'}
+    
+    year: the year for which the timeseries will be extracted
+    
+    
+    Return:
+    
+    st_data: [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    '''
     lat = st_info['lat']
     lon = st_info['lon']
     delta_lst = lst_ir-lst_nir
@@ -441,7 +490,26 @@ def extract_stations_timeseries(lst_ir,lst_nir,st_info,year):
     st_data = xr.combine_by_coords([lst_ir_st,lst_nir_st,delta_lst_st,delta_lst_nonan_st])
     return st_data
 def irrigation_season_timing(st_data,st_info,model = 'l2',add_plot = True):
-    stid = st_info['canal']
+    '''
+    determine the start and end of the irrigation season in the pixel using  binary change point detection algorithm from ruptures package to perform fast signal segmentation
+    
+    Parameters:
+    
+    st_data = [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    
+    st_info: [Pandas DataFrame] a data frame with three columns {'name','lat','lon'}
+    
+    model: cost function usded for detection of break points, default 'l2' (This cost function detects mean-shifts in a signal) other options: "l2"  # "l1", "rbf", "linear", "normal", "ar"
+    
+    add_plot: [True or False] option to add a plot that shows the lst of original pixel, natural pixel assigned to the origainal pixel and the delta LST + two lines indicating the start and the end of the irrigation season
+    
+    
+    Return:
+    
+    bp0,bp1: [date] start (bp0) and the end (bp1) of the irrigation season
+    
+    '''
+    stid = st_info['name']
     algo = rpt.Binseg(model=model).fit(st_data.delta_lst_nonan_st.values)
     my_bkps = algo.predict(n_bkps=2)
     
@@ -473,9 +541,100 @@ def irrigation_season_timing(st_data,st_info,model = 'l2',add_plot = True):
         fig.legend(loc = 'upper center', ncol = 5)
     return bp0,bp1
         
-def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigation, model = 'l2', penalty = 1, min_seg_size = 3, segmentation_method = 'mean', add_plot = True): 
-    stid = st_info['canal']
+def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigation, model = 'l2', penalty = 1, min_seg_size = 3, segmentation_method = 'mean',mean_deltalst_quantile_cutoff = 0.5, add_plot = True): 
+    
+    # Segmentation after identifying the break points
+    def irrigation_segment_detector(mean_deltalst_quantile_cutoff,final_bps,diff_lst_ir_season,segmentation_method):
+        # calculatiing mean delta lst for each segment
 
+        bp_start = 0
+        diff_lst_segs = []
+        for bp in final_bps:
+            diff_lst_seg = diff_lst_ir_season.isel(time = slice(bp_start,bp)).mean(dim = 'time')
+            diff_lst_segs.append(diff_lst_seg)
+            bp_start = bp
+        diff_lst_seg_mean = xr.concat(diff_lst_segs,'time')
+        if add_plot == True:
+            diff_lst_seg_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='g', linewidth=2, marker='o',markersize=10)
+        seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(mean_deltalst_quantile_cutoff)).astype(int)
+
+        # calculating mean gradient within each segment
+        datetime = diff_lst_ir_season["time"]
+        diff_lst_ir_season["time"] = diff_lst_ir_season["time"].dt.dayofyear
+        bp_start = 0
+        lst_seg_grads = []
+        for bp in final_bps:
+            lst_seg_grad = diff_lst_ir_season.isel(time = slice(bp_start,bp)).differentiate("time"). mean(dim = 'time')
+            lst_seg_grads.append(lst_seg_grad)
+            bp_start = bp
+        lst_seg_grad_mean = xr.concat(lst_seg_grads,'time')
+        if add_plot == True:
+            lst_seg_grad_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='r', linewidth=2, marker='o',markersize=10)
+        # seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(mean_deltalst_quantile_cutoff)).astype(int)
+        diff_lst_ir_season["time"] = datetime
+
+        delta_lst_seg_mean_grad_combined = xr.merge([diff_lst_seg_mean.rename("segments mean"),lst_seg_grad_mean.rename("segments mean gradient")])
+
+        seg_mean_grad = delta_lst_seg_mean_grad_combined.to_dataframe()
+        # print('number of samples: ', len(seg_mean_grad))                               
+        # filling the gap between the break points (which segment is irrigated and wich one is not)
+        if segmentation_method == 'mean':
+            irr_segs = np.zeros_like(diff_lst_ir_season)
+            bp_start = 0
+            for i,bp in enumerate(final_bps):
+                irr_segs[bp_start: bp]= seg_irr_flag[i]
+                bp_start = bp
+
+            irr_segs
+            irr_seg = xr.zeros_like(diff_lst_ir_season)
+            irr_seg = irr_seg.rename("detected segments")
+            irr_seg.values = irr_segs
+            df_detected_seg = irr_seg.to_dataframe()  
+        elif segmentation_method == 'trend':
+            irr_segs = np.zeros_like(diff_lst_ir_season)
+            bp_start = 0
+            prev_seg_mean = 0
+            for i,bp in enumerate(final_bps):
+                if (diff_lst_seg_mean[i]<prev_seg_mean):
+                    irr_segs[bp_start: bp]= 1
+                elif (diff_lst_seg_mean[i]-prev_seg_mean)<diff_lst_seg_mean.std(dim = 'time') and diff_lst_seg_mean[i]<diff_lst_seg_mean.quantile(mean_deltalst_quantile_cutoff): # if the segment mean has increased but not significantly it can be and irrigation episode
+                    irr_segs[bp_start: bp]= 1
+                bp_start = bp
+                prev_seg_mean =diff_lst_seg_mean[i]
+
+            irr_segs
+            irr_seg = xr.zeros_like(diff_lst_ir_season)
+            irr_seg = irr_seg.rename("detected segments")
+            irr_seg.values = irr_segs
+            df_detected_seg = irr_seg.to_dataframe()
+        elif segmentation_method == 'kmean': 
+            from sklearn.cluster import KMeans
+            features = seg_mean_grad[["segments mean","segments mean gradient"]].values
+            kmeans= KMeans(n_clusters=3,random_state=0).fit(features)
+            kmean_flags = kmeans.labels_
+            centeroid = kmeans.cluster_centers_
+
+            # we are working under the assumption that the irrigated segments having lower mean Delta LST
+            irrigated_idx = np.argmin(centeroid[:,0])
+            kmean_flags = (kmean_flags == irrigated_idx).astype(int)
+
+            irr_segs = np.zeros_like(diff_lst_ir_season)
+            bp_start = 0
+            for i,bp in enumerate(final_bps):
+                irr_segs[bp_start: bp]= kmean_flags[i]
+                bp_start = bp
+
+            irr_segs
+            irr_seg = xr.zeros_like(diff_lst_ir_season)
+            irr_seg = irr_seg.rename("detected segments")
+            irr_seg.values = irr_segs
+
+            df_detected_seg = irr_seg.to_dataframe()
+        return df_detected_seg
+    
+    
+    # detection of the break points within the irrigation season    
+    stid = st_info['name']
     bp0,bp1 = irrigation_season_timing(st_data, st_info, model = 'l2', add_plot = False)
     diff_lst_ir_season = st_data.delta_lst_nonan_st.sel(time=slice(bp0,bp1)) # slicing the time series for the irrigation period
     algo = rpt.KernelCPD(kernel="linear", min_size=min_seg_size).fit(diff_lst_ir_season.values)
@@ -488,16 +647,7 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     final_bps = []
                                    
     for bp in my_bkps[:-1]:
-        if bp+1<len(diff_lst_ir_arr)-1:
-
-            # lst0 = diff_lst_ir_arr[bp]
-            # lst1 = diff_lst_ir_arr[bp+1]
-            # if lst1-lst0>0:
-            #     bp = bp+1
-            #     if diff_lst_ir_arr[bp]>diff_lst_ir_arr[bp+1]:
-            #         final_bps.append(bp)
-            # elif lst1-lst0<0:
-            #     final_bps.append(bp)  
+        if bp+1<len(diff_lst_ir_arr)-1: 
             final_bps.append(bp)
 
     bps = date_ir[final_bps]
@@ -505,92 +655,11 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     lst_ir_ir_season = st_data.lst_ir_st.sel(time=slice(bp0,bp1))
     lst_ir_arr = lst_ir_ir_season.values
     final_bps.append(len(lst_ir_arr))
+    
+    # identifying the the irrigated segments between the break points
+    df_detected_seg = irrigation_segment_detector(mean_deltalst_quantile_cutoff,final_bps,diff_lst_ir_season,segmentation_method)
 
-    # calculatiing mean delta lst for each segment
-    quantile_threshold = 0.7
-    bp_start = 0
-    diff_lst_segs = []
-    for bp in final_bps:
-        diff_lst_seg = diff_lst_ir_season.isel(time = slice(bp_start,bp)).mean(dim = 'time')
-        diff_lst_segs.append(diff_lst_seg)
-        bp_start = bp
-    diff_lst_seg_mean = xr.concat(diff_lst_segs,'time')
-    if add_plot == True:
-        diff_lst_seg_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='g', linewidth=2, marker='o',markersize=10)
-    seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(quantile_threshold)).astype(int)
-               
-    # calculating mean gradient within each segment
-    datetime = diff_lst_ir_season["time"]
-    diff_lst_ir_season["time"] = diff_lst_ir_season["time"].dt.dayofyear
-    bp_start = 0
-    lst_seg_grads = []
-    for bp in final_bps:
-        lst_seg_grad = diff_lst_ir_season.isel(time = slice(bp_start,bp)).differentiate("time"). mean(dim = 'time')
-        lst_seg_grads.append(lst_seg_grad)
-        bp_start = bp
-    lst_seg_grad_mean = xr.concat(lst_seg_grads,'time')
-    if add_plot == True:
-        lst_seg_grad_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='r', linewidth=2, marker='o',markersize=10)
-    # seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(quantile_threshold)).astype(int)
-    diff_lst_ir_season["time"] = datetime
-                                   
-    delta_lst_seg_mean_grad_combined = xr.merge([diff_lst_seg_mean.rename("segments mean"),lst_seg_grad_mean.rename("segments mean gradient")])
 
-    seg_mean_grad = delta_lst_seg_mean_grad_combined.to_dataframe()
-    print('number of samples: ', len(seg_mean_grad))                               
-    # filling the gap between the break points (which segment is irrigated and wich one is not)
-    if segmentation_method == 'mean':
-        irr_segs = np.zeros_like(diff_lst_ir_season)
-        bp_start = 0
-        for i,bp in enumerate(final_bps):
-            irr_segs[bp_start: bp]= seg_irr_flag[i]
-            bp_start = bp
-
-        irr_segs
-        irr_seg = xr.zeros_like(diff_lst_ir_season)
-        irr_seg = irr_seg.rename("detected segments")
-        irr_seg.values = irr_segs
-        df_detected_seg = irr_seg.to_dataframe()  
-    elif segmentation_method == 'trend':
-        irr_segs = np.zeros_like(diff_lst_ir_season)
-        bp_start = 0
-        prev_seg_mean = 0
-        for i,bp in enumerate(final_bps):
-            if (diff_lst_seg_mean[i]<prev_seg_mean):
-                irr_segs[bp_start: bp]= 1
-            elif (diff_lst_seg_mean[i]-prev_seg_mean)<diff_lst_seg_mean.std(dim = 'time') and diff_lst_seg_mean[i]<diff_lst_seg_mean.quantile(quantile_threshold): # if the segment mean has increased but not significantly it can be and irrigation episode
-                irr_segs[bp_start: bp]= 1
-            bp_start = bp
-            prev_seg_mean =diff_lst_seg_mean[i]
-
-        irr_segs
-        irr_seg = xr.zeros_like(diff_lst_ir_season)
-        irr_seg = irr_seg.rename("detected segments")
-        irr_seg.values = irr_segs
-        df_detected_seg = irr_seg.to_dataframe()
-    elif segmentation_method == 'kmean': 
-        from sklearn.cluster import KMeans
-        features = seg_mean_grad[["segments mean","segments mean gradient"]].values
-        kmeans= KMeans(n_clusters=3,random_state=0).fit(features)
-        kmean_flags = kmeans.labels_
-        centeroid = kmeans.cluster_centers_
-
-        # we are working under the assumption that the irrigated segments having lower mean Delta LST
-        irrigated_idx = np.argmin(centeroid[:,0])
-        kmean_flags = (kmean_flags == irrigated_idx).astype(int)
-
-        irr_segs = np.zeros_like(diff_lst_ir_season)
-        bp_start = 0
-        for i,bp in enumerate(final_bps):
-            irr_segs[bp_start: bp]= kmean_flags[i]
-            bp_start = bp
-
-        irr_segs
-        irr_seg = xr.zeros_like(diff_lst_ir_season)
-        irr_seg = irr_seg.rename("detected segments")
-        irr_seg.values = irr_segs
-            
-        df_detected_seg = irr_seg.to_dataframe()
     if add_plot == True:
         diff_lst_ir_season.plot(x = 'time',figsize = (15,8))
         label0 = bp0.dt.strftime("%b %d, %Y")
