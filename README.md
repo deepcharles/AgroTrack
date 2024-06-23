@@ -4,8 +4,6 @@
 
 Tracing farmers irrigation decision using satellite observations
 
-# AgroTrack
-
 AgroTrack is a Python package designed to track farmers' irrigation decisions using thermal remote sensing. It employs hydrological similarity to identify nearby natural pixels and construct a delta LST (Land Surface Temperature) tensor. The package consists of multiple modules, with two key components for tracking farmers' decisions in time and space:
 
 1. **Modules for mapping irrigated areas:**
@@ -20,6 +18,7 @@ AgroTrack is a Python package designed to track farmers' irrigation decisions us
 
 - **Data acquisition:** Includes tools to read raw satellite data and create Xarray datasets from NASA servers (for NASA users), including MODIS LST and LAI, SMAP enhanced soil moisture, and MERIT DEM.
 - **Integration with Earth Engine:** Utilizes the Xee package, a specialized Xarray extension for Google Earth Engine (GEE), enabling users to work with Earth Engine ImageCollections as Xarray Datasets. This allows streaming of input satellite data without downloading, facilitating the creation of Delta LST Xarray datasets.
+- **Change Point Detection**: Apply advanced algorithms from [Ruptures](https://centre-borelli.github.io/ruptures-docs/) package to determine the start and end of irrigation seasons and each individual irrigation events.
 - **Parallel processing and data export:** Integrates Dask and Xarray-Beam for parallel processing and exporting datasets to cloud-optimized Zarr format, providing offline accessibility to input data.
 - **Result presentation:** Presents irrigation event timing output in an easily interpretable format using SciPy's sparse matrix, ensuring efficient and accessible results.
 - **Accuracy evaluation:** Utilizes scikit-learn to build confusion matrices and corresponding evaluation metrics for assessing timing estimation accuracy.
