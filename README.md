@@ -9,12 +9,12 @@ Tracing farmers irrigation decision using satellite observations
 AgroTrack is a Python package designed to track farmers' irrigation decisions using thermal remote sensing. It employs hydrological similarity to identify nearby natural pixels and construct a delta LST (Land Surface Temperature) tensor. The package consists of multiple modules, with two key components for tracking farmers' decisions in time and space:
 
 1. **Modules for mapping irrigated areas:**
-   a) **extract_natural_land_cover_lst:** This function identifies nearby hydrologically similar natural pixels and creates a baseline temperature by averaging their temperatures.
-   b) **irrigation_mapping_with_deltaLST:** Utilizes the generated Delta LST data cube and a minimum temperature reduction threshold to calculate the annual frequency of irrigation days, focusing exclusively on areas classified as cropland in the MODIS land cover dataset.
+   - **extract_natural_land_cover_lst:** This function identifies nearby hydrologically similar natural pixels and creates a baseline temperature by averaging their temperatures.
+   - **irrigation_mapping_with_deltaLST:** Utilizes the generated Delta LST data cube and a minimum temperature reduction threshold to calculate the annual frequency of irrigation days, focusing exclusively on areas classified as cropland in the MODIS land cover dataset.
 
 2. **Modules for estimating irrigation timing attributes using change point detection:**
-   a) **irrigation_season_timing:** Creates an array of start, end, and duration of irrigation seasons for each pixel by analyzing the delta LST signal with a binary change point detection algorithm.
-   b) **irrigation_event_timing:** Applies change point detection to the delta LST time series to identify potential break points caused by irrigation application, cessation, or rate changes. It then uses a segmentation algorithm to identify irrigation episodes.
+   - **irrigation_season_timing:** Creates an array of start, end, and duration of irrigation seasons for each pixel by analyzing the delta LST signal with a binary change point detection algorithm.
+   - **irrigation_event_timing:** Applies change point detection to the delta LST time series to identify potential break points caused by irrigation application, cessation, or rate changes. It then uses a segmentation algorithm to identify irrigation episodes.
 
 ## Additional features:
 
