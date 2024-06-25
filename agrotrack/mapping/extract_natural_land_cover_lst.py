@@ -3,37 +3,49 @@ import xarray as xr
 import numpy as np
 import subprocess
 import matplotlib.pyplot as plt
+from agrotrack import create_dem
 
 def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, max_elev_diff = 100, add_plot = False, plot_time = None, to_nc=False, save_dir=None):
     """
-    Process each pixel to find and average the land surface temperature (LST) from the surrounding natural land cover pixel(s).
-    
-    This function evaluate each pixel in the provided area. For every pixel, it identifies neighbouring pixels that are classified as natural land cover starting from the immediate neighbouring pixels and extending the radius of the search as far as it find at least one natural pixel or reach to the maximum radius of search defined in km by the user (which ever comes first). It then calculate the average LST of all identified natural land cover pixels and assign its value to the original pixel.
-    
-    Parameters:
-    
-    bounding_box = a list defining the bounding box with lower left and upper right latitude and longitude with the following order:
-    [lower_left_lon, lower_left_lat,upper_right_lon,upper_right_lat]
-    
-    lc: MODIS annual land cover map xarray dataset (output of the xr.open_dataset)
-    
-    lst: MODIS LST xarray dataset (output of the xr.open_dataset)
-    
-    Max_radius: maximum radius of search for the natural pixel in km
-    
-    max_elev_diff: the maximum valid elevation difference between the original and natural land cover pixel
-    
-    add_plot: [True or False] option to add a plot that shows the radius of search for each pixel and the resulting natural pixels LST map. the map shows all the iteration of searching for the natural pixel and assigning the natural pixels lst to the original pixel.
-    
-    plot_time: the date to create the above plot for it
-    
-    to_nc: [True or False] create a nc file or not 
-    
-    save_dir: [string directory] The directory to save the out put natural pixel lst nc file
-    
-    Return:
-    
-    lst_natural_lc: [Xarray dataset] the lst of the natural pixel assigned to the original pixel
+    Process each pixel to find and average the land surface temperature (LST) from surrounding natural land cover pixels.
+
+    This function evaluates each pixel in the provided area. For every pixel, it identifies neighboring pixels
+    classified as natural land cover, starting from immediate neighbors and expanding the search radius until
+    at least one natural pixel is found or the maximum search radius is reached. It then calculates the average
+    LST of all identified natural land cover pixels and assigns this value to the original pixel.
+
+    :param bounding_box: Defines the area of interest as [lower_left_lon, lower_left_lat, upper_right_lon, upper_right_lat]
+    :type bounding_box: list
+    :param lc: MODIS annual land cover map dataset
+    :type lc: xarray.Dataset
+    :param lst: MODIS LST dataset
+    :type lst: xarray.Dataset
+    :param max_radius: Maximum radius (in km) to search for natural pixels
+    :type max_radius: float
+    :param max_elev_diff: Maximum valid elevation difference between the original and natural land cover pixels
+    :type max_elev_diff: float
+    :param add_plot: If True, generates a plot showing the search radius for each pixel and the resulting natural pixels LST map, defaults to False
+    :type add_plot: bool, optional
+    :param plot_time: The date to create the plot for, if add_plot is True
+    :type plot_time: datetime or str, optional
+    :param to_nc: If True, saves the output as a NetCDF file, defaults to False
+    :type to_nc: bool, optional
+    :param save_dir: Directory to save the output NetCDF file, if to_nc is True
+    :type save_dir: str, optional
+
+    :return: Dataset containing the LST of natural pixels assigned to the original pixels
+    :rtype: xarray.Dataset
+
+    :raises ValueError: If max_radius is not a positive number
+    :raises IOError: If unable to save NetCDF file when to_nc is True
+
+    .. note::
+       - The function iteratively searches for natural pixels, expanding the search radius up to max_radius.
+       - Elevation differences between original and natural pixels are considered, limited by max_elev_diff.
+       - If add_plot is True, the function visualizes the search process and final LST assignment.
+
+    .. warning::
+       Large bounding boxes or small max_radius values may result in long processing times.
     
     """
     non_irrigated_lc_type = [8,9,10,16] # 8 Woody Savannas, 9 Savannas, 10 Grasslands, 16 Barren or Sparsely Vegetated
