@@ -6,22 +6,22 @@ import ruptures as rpt
 
 def irrigation_season_timing_point(st_data,st_info,model = 'l2',add_plot = True):
     '''
-    determine the start and end of the irrigation season in the pixel using  binary change point detection algorithm from ruptures package to perform fast signal segmentation
-    
-    Parameters:
-    
-    st_data = [Xarray dataset] the lst of the natural pixel assigned to the original pixel
-    
-    st_info: [Pandas DataFrame] a data frame with three columns {'name','lat','lon'}
-    
-    model: cost function usded for detection of break points, default 'l2' (This cost function detects mean-shifts in a signal) other options: "l2"  # "l1", "rbf", "linear", "normal", "ar"
-    
-    add_plot: [True or False] option to add a plot that shows the lst of original pixel, natural pixel assigned to the origainal pixel and the delta LST + two lines indicating the start and the end of the irrigation season
-    
-    
-    Return:
-    
-    bp0,bp1: [date] start (bp0) and the end (bp1) of the irrigation season
+    Determine the start and end of the irrigation season in the pixel using binary change point detection algorithm from ruptures package to perform fast signal segmentation.
+
+    :param st_data: The LST of the natural pixel assigned to the original pixel
+    :type st_data: Xarray dataset
+
+    :param st_info: A data frame with three columns {'name', 'lat', 'lon'}
+    :type st_info: Pandas DataFrame
+
+    :param model: Cost function used for detection of break points. Default is 'l2' (This cost function detects mean-shifts in a signal). Other options: "l1", "rbf", "linear", "normal", "ar"
+    :type model: str, optional
+
+    :param add_plot: Option to add a plot that shows the LST of original pixel, natural pixel assigned to the original pixel and the delta LST + two lines indicating the start and the end of the irrigation season
+    :type add_plot: bool, optional
+
+    :returns: Start (bp0) and the end (bp1) of the irrigation season
+    :rtype: tuple(date, date)
     
     '''
     stid = st_info['name']

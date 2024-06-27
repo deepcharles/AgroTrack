@@ -3,7 +3,6 @@ import xarray as xr
 import numpy as np
 import subprocess
 import matplotlib.pyplot as plt
-from agrotrack import create_dem
 
 def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, max_elev_diff = 100, add_plot = False, plot_time = None, to_nc=False, save_dir=None):
     """
@@ -48,6 +47,8 @@ def extract_natural_land_cover_lst(bounding_box,lc,lst, max_radius = 15, max_ele
        Large bounding boxes or small max_radius values may result in long processing times.
     
     """
+    from agrotrack import create_dem
+
     non_irrigated_lc_type = [8,9,10,16] # 8 Woody Savannas, 9 Savannas, 10 Grasslands, 16 Barren or Sparsely Vegetated
     buffer_zone = 1
     masks = []

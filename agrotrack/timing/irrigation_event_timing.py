@@ -9,6 +9,7 @@ import ruptures as rpt
 
 def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigation, model = 'l2', penalty = 1, min_seg_size = 3, segmentation_method = 'mean',mean_deltalst_quantile_cutoff = 0.5, add_plot = True): 
     
+    from agrotrack import irrigation_season_timing_point
     # Segmentation after identifying the break points
     def irrigation_segment_detector(mean_deltalst_quantile_cutoff,final_bps,diff_lst_ir_season,segmentation_method):
         # calculatiing mean delta lst for each segment
@@ -101,7 +102,7 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     
     # detection of the break points within the irrigation season    
     stid = st_info['name']
-    bp0,bp1 = irrigation_season_timing(st_data, st_info, model = 'l2', add_plot = False)
+    bp0,bp1 = irrigation_season_timing_point(st_data, st_info, model = 'l2', add_plot = False)
     diff_lst_ir_season = st_data.delta_lst_nonan_st.sel(time=slice(bp0,bp1)) # slicing the time series for the irrigation period
     algo = rpt.KernelCPD(kernel="linear", min_size=min_seg_size).fit(diff_lst_ir_season.values)
     my_bkps = algo.predict(pen=penalty)
@@ -171,7 +172,9 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
         plt.title('Irrigation episodes vs detected irrigation events')
         plt.ylabel('observed vs detected')
                                    
-        df_combo_elec_bps = pd.concat([df_insitu_elec[stid],df_bps*df_insitu_irrigation[stid].quantile(.95)/2,df_detected_seg['detected segments']*df_insitu_irrigation[stid].quantile(.95)/2], axis=1)
+        df_combo_elec_bps = pd.concat([df_insitu_elec[stid],
+                                       df_bps*df_insitu_irrigation[stid].quantile(.95)/2,
+                                       df_detected_seg['detected segments']*df_insitu_irrigation[stid].quantile(.95)/2], axis=1)
         df_combo_elec_bps.index = df_combo_elec_bps.index.strftime('%y-%b-%d')
         plt.subplots(figsize = [24,4])
         sns.heatmap(df_combo_elec_bps.T,cmap = sns.color_palette("rocket_r", as_cmap=True),cbar_kws={'label': 'Electricity consumption (${m^3/day}$)'},vmax = df_insitu_irrigation[stid].quantile(.98))

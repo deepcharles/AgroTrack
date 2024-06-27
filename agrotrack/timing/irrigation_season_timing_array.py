@@ -62,11 +62,14 @@ def irrigation_season_timing_array(delta_lst,lc, year, model = 'l2',add_plot = T
     if add_plot == True:
         mpl.rcParams["font.size"] = 14
 
-        fig,(ax1,ax2, ax3) = plt.subplots(1,3,figsize = (28,8))
+        fig,(ax1,ax2) = plt.subplots(2,1,figsize = (10,22))
         fig.autofmt_xdate()
-        delta_lst_nonan.sel(time = '2021-07-11').plot(ax = ax1, x = 'lon',vmin = -10, vmax = 10, cmap = cmocean.cm.balance, cbar_kwargs={"label": "Delta LST ($K^{0}$)"})
-        ax1.set_title('Delta LST')
-        ax2.set_title('Irrigation season duration (days)')
+        ir_season_duration.where(np.logical_and(~water_mask,crop_mask)).where(ir_season_duration<200).plot(x ='lon',
+                                                                                                           cmap = cmocean.cm.deep,
+                                                                                                           vmin = 60,
+                                                                                                           ax = ax1, 
+                                                                                                           cbar_kwargs={"label": "Duration of irrigation season (days)"})
+        ax1.set_title('Irrigation season duration (days)')
 
         C = np.array([
             [0,.4,0],      #  1 Evergreen Needleleaf Forest
@@ -105,11 +108,10 @@ def irrigation_season_timing_array(delta_lst,lc, year, model = 'l2',add_plot = T
                       'Snow and Ice',
                       'Barren or Sparsely Vegetated',
                       'Water']
-        plot = lc.LC_Type1.plot(x= 'lon', ax = ax3,levels = [*range(1,19)],cmap = cmap,cbar_kwargs={"label": "Land Cover Type (MODIS IGBP)"})
-        ax3.set_title('LC northern california')
+        plot = lc.LC_Type1.plot(x= 'lon', ax = ax2,levels = [*range(1,19)],cmap = cmap,cbar_kwargs={"label": "Land Cover Type (MODIS IGBP)"})
+        ax2.set_title('LC northern california')
         cbar = plot.colorbar
         cbar.set_ticks(np.array([*range(1,18)])+0.5)
         cbar.set_ticklabels(lc_labels)
-        ir_season_duration.where(np.logical_and(~water_mask,crop_mask)).where(ir_season_duration<200).plot(x ='lon',cmap = cmocean.cm.deep,vmin = 60, ax = ax2, cbar_kwargs={"label": "Duration of irrigation season (days)"})
 
     return ir_season_start, ir_season_end, ir_season_duration
