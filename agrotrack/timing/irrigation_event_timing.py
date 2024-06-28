@@ -21,8 +21,8 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
             diff_lst_segs.append(diff_lst_seg)
             bp_start = bp
         diff_lst_seg_mean = xr.concat(diff_lst_segs,'time')
-        if add_plot == True:
-            diff_lst_seg_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='g', linewidth=2, marker='o',markersize=10)
+        # if add_plot == True:
+        #     diff_lst_seg_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='g', linewidth=2, marker='o',markersize=10)
         seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(mean_deltalst_quantile_cutoff)).astype(int)
 
         # calculating mean gradient within each segment
@@ -35,8 +35,8 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
             lst_seg_grads.append(lst_seg_grad)
             bp_start = bp
         lst_seg_grad_mean = xr.concat(lst_seg_grads,'time')
-        if add_plot == True:
-            lst_seg_grad_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='r', linewidth=2, marker='o',markersize=10)
+        # if add_plot == True:
+        #     lst_seg_grad_mean.plot(x = 'time',figsize = [18,10],linestyle='dashed',color='r', linewidth=2, marker='o',markersize=10)
         # seg_irr_flag = (diff_lst_seg_mean<diff_lst_seg_mean.quantile(mean_deltalst_quantile_cutoff)).astype(int)
         diff_lst_ir_season["time"] = datetime
 
@@ -99,6 +99,14 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
             df_detected_seg = irr_seg.to_dataframe()
         return df_detected_seg
     
+    # trimming invalid data from start and end of the df
+    def trim_invalid_data(df):
+        valid = (df.notna() & (df != 0))
+        valid_st = valid.any(axis = 1).idxmax()
+        valid_en = valid.any(axis =1)[::-1].idxmax()
+        trimmed_df = df.loc[valid_st:valid_en]
+        return trimmed_df
+    
     
     # detection of the break points within the irrigation season    
     stid = st_info['name']
@@ -106,7 +114,11 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     diff_lst_ir_season = st_data.delta_lst_nonan_st.sel(time=slice(bp0,bp1)) # slicing the time series for the irrigation period
     algo = rpt.KernelCPD(kernel="linear", min_size=min_seg_size).fit(diff_lst_ir_season.values)
     my_bkps = algo.predict(pen=penalty)
-                                   
+    
+    if add_plot == True:
+        from agrotrack import display
+        display(diff_lst_ir_season.values, my_bkps,show_piecewise_linear=True)
+        
     diff_lst_ir_arr = diff_lst_ir_season.values
     # diff_sm_ir_arr = diff_sm_ir_season.values
 
@@ -125,8 +137,8 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     
     # identifying the the irrigated segments between the break points
     df_detected_seg = irrigation_segment_detector(mean_deltalst_quantile_cutoff,final_bps,diff_lst_ir_season,segmentation_method)
-
-
+    
+    # finding the start and end date of each irrigation episode
     if add_plot == True:
         diff_lst_ir_season.plot(x = 'time',figsize = (15,8))
         label0 = bp0.dt.strftime("%b %d, %Y")
@@ -134,11 +146,8 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
         label1 = bp1.dt.strftime("%b %d, %Y")
         plt.axvline(x=bp1.values, color='r', label=f'end: {label1}',linestyle='--')
         plt.axvspan(bp0.values, bp1.values, color='g', alpha=0.1)
-        # plt.plot(bps,bps_diff_lst,'ro',label = 'potential irrigation application based on diff LST break points')
         plt.plot(bps,bps_diff_lst,'ro',label = 'potential irrigation application based on diff LST break points')
-        # plt.plot(bps_diff_sm[bps_diff_sm>0].time, diff_lst_ir_season.sel(time = bps_diff_sm[bps_diff_sm>0].time),'kx',label = 'potential irrigation application based on both LST break points and (+) SM diff (IR-nIR)', markersize=10)
         plt.legend(loc= 'lower center', ncol =2)
-        # ax.set_title('')
         plt.title(f'station code: {stid}')
 
     df_bps = pd.DataFrame(np.zeros([366,1]),columns = ['Break points'])
@@ -153,40 +162,38 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     df_insitu_elec  = df_insitu_irrigation[df_insitu_irrigation.index.year == int(year)] # only year 2020
     df_insitu_bin  = df_binary[df_binary.index.year == int(year)] # only year 2020
     df_bps = df_bps[df_bps.index.isin(df_insitu_bin.index)] # filtering df_bps based on df_insitu_2020
-    # df_bps_sm = df_bps_sm[df_bps_sm.index.isin(df_insitu_bin.index)] # filtering df_bps based on df_insitu_2020
-
-    # df_combo_bin_bps = pd.concat([df_insitu_bin[stid],df_bps,df_bps_sm], axis=1) # ,df_bps_sm
     df_combo_bin_bps = pd.concat([df_insitu_bin[stid],df_bps,df_detected_seg['detected segments']], axis=1) # ,df_bps_sm
-
     df_combo_bin_bps.index = df_combo_bin_bps.index.strftime('%y-%b-%d')
-    df_combo_bin_bps = df_combo_bin_bps.rename(columns={f"{stid}": f"observed segments ({stid})"})
+    df_combo_bin_bps = df_combo_bin_bps.rename(columns={f"{stid}": "observed data"})
+    df_combo_bin_bps = trim_invalid_data(df_combo_bin_bps)
     
     if add_plot == True:
         plt.subplots(figsize = [24,4])
         colors = ((.85, .85, 0.85), (0, 0, 0))
         cmap = LinearSegmentedColormap.from_list('Custom', colors, len(colors))
-        ax = sns.heatmap(df_combo_bin_bps.T,cmap = cmap,cbar_kws={'label': 'irrigation (0=No, 1=Yes)'})
+        ax = sns.heatmap(df_combo_bin_bps.fillna(0).T,cmap = cmap,cbar_kws={'label': 'irrigation (0=No, 1=Yes)'})
         colorbar = ax.collections[0].colorbar
         colorbar.set_ticks([0.25,0.75])
         colorbar.set_ticklabels(['0', '1'])
         plt.title('Irrigation episodes vs detected irrigation events')
-        plt.ylabel('observed vs detected')
+        # plt.ylabel('observed vs detected')
                                    
         df_combo_elec_bps = pd.concat([df_insitu_elec[stid],
                                        df_bps*df_insitu_irrigation[stid].quantile(.95)/2,
                                        df_detected_seg['detected segments']*df_insitu_irrigation[stid].quantile(.95)/2], axis=1)
+        df_combo_elec_bps = trim_invalid_data(df_combo_elec_bps.rename(columns={f"{stid}": "observed data"}))
         df_combo_elec_bps.index = df_combo_elec_bps.index.strftime('%y-%b-%d')
         plt.subplots(figsize = [24,4])
-        sns.heatmap(df_combo_elec_bps.T,cmap = sns.color_palette("rocket_r", as_cmap=True),cbar_kws={'label': 'Electricity consumption (${m^3/day}$)'},vmax = df_insitu_irrigation[stid].quantile(.98))
+        sns.heatmap(df_combo_elec_bps.fillna(0).T,cmap = sns.color_palette("rocket_r", as_cmap=True),cbar_kws={'label': 'Electricity consumption (${m^3/day}$)'},vmax = df_insitu_irrigation[stid].quantile(.98))
         plt.title('Electricity consumption vs detected irrigation events')
-        plt.ylabel('Fields')
+        # plt.ylabel('Fields')
 
         df_combo_elec_bin = pd.concat([df_insitu_elec[stid],(df_insitu_irrigation[stid]*df_detected_seg['detected segments'].T).T.replace(0,np.nan)], axis=1)
         axes = df_combo_elec_bin.plot.line(figsize = [18,6],style=['c-','k*-'],linewidth = 3,fontsize = 16,grid = True)
         axes.legend(["water release", "detected irrigation episodes"]);
 
     # Creating the confusion matirx and other classification metrics
-    irr_true = df_combo_bin_bps[f'observed segments ({stid})'].fillna(0)
+    irr_true = df_combo_bin_bps[f'observed data'].fillna(0)
     irr_pred = df_combo_bin_bps['detected segments'].fillna(0)
     from sklearn.metrics import confusion_matrix,accuracy_score,precision_score, recall_score, f1_score,ConfusionMatrixDisplay
     cm = confusion_matrix(irr_true,irr_pred)
@@ -209,4 +216,4 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
         print('precision: {:.2f}%'.format(prec))
         print('recall: {:.2f}%'.format(recall))
         print('f1_score: {:.2f}%'.format(f1))
-    return performance
+    return performance, df_combo_bin_bps

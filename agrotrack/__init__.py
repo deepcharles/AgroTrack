@@ -11,6 +11,8 @@ from .timing.irrigation_event_timing import irrigation_event_timing
 from .timing.irrigation_season_timing_array import irrigation_season_timing_array
 from .timing.irrigation_season_timing_point import irrigation_season_timing_point
 
+from .show.display import display
+
 __all__ = [
     'create_dem',
     'create_lai_datacube',
@@ -21,5 +23,6 @@ __all__ = [
     'extract_stations_timeseries',
     'irrigation_event_timing',
     'irrigation_season_timing_array',
-    'irrigation_season_timing_point'
+    'irrigation_season_timing_point',
+    'display'
 ]
