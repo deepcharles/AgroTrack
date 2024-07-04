@@ -1,7 +1,9 @@
+import os
 import xarray as xr
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import pandas as pd
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 import seaborn as sns
@@ -168,7 +170,8 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
     df_combo_bin_bps = trim_invalid_data(df_combo_bin_bps)
     
     if add_plot == True:
-        plt.subplots(figsize = [24,4])
+        mpl.rcParams["font.size"] = 22
+        plt.subplots(figsize = [24,6])
         colors = ((.85, .85, 0.85), (0, 0, 0))
         cmap = LinearSegmentedColormap.from_list('Custom', colors, len(colors))
         ax = sns.heatmap(df_combo_bin_bps.fillna(0).T,cmap = cmap,cbar_kws={'label': 'irrigation (0=No, 1=Yes)'})
@@ -176,21 +179,33 @@ def irrigation_event_timing(st_data, st_info, year, df_binary, df_insitu_irrigat
         colorbar.set_ticks([0.25,0.75])
         colorbar.set_ticklabels(['0', '1'])
         plt.title('Irrigation episodes vs detected irrigation events')
-        # plt.ylabel('observed vs detected')
+        ax.figure.tight_layout()
+        
+        
+        png_dir = '/discover/nobackup/ejalilva/pictures/paper figures/'
+        filename = f'irrigation timing binary heatmap ({stid})'
+        img_filename = os.path.join(png_dir,f'{filename}.png')
+        plt.savefig(img_filename, transparent = False,dpi = 150)
                                    
         df_combo_elec_bps = pd.concat([df_insitu_elec[stid],
                                        df_bps*df_insitu_irrigation[stid].quantile(.95)/2,
                                        df_detected_seg['detected segments']*df_insitu_irrigation[stid].quantile(.95)/2], axis=1)
         df_combo_elec_bps = trim_invalid_data(df_combo_elec_bps.rename(columns={f"{stid}": "observed data"}))
         df_combo_elec_bps.index = df_combo_elec_bps.index.strftime('%y-%b-%d')
-        plt.subplots(figsize = [24,4])
-        sns.heatmap(df_combo_elec_bps.fillna(0).T,cmap = sns.color_palette("rocket_r", as_cmap=True),cbar_kws={'label': 'Electricity consumption (${m^3/day}$)'},vmax = df_insitu_irrigation[stid].quantile(.98))
+        
+        plt.subplots(figsize = [24,6])
+        ax = sns.heatmap(df_combo_elec_bps.fillna(0).T,cmap = sns.color_palette("rocket_r", as_cmap=True),cbar_kws={'label': 'Electricity consumption (${m^3/day}$)'},vmax = df_insitu_irrigation[stid].quantile(.98))
         plt.title('Electricity consumption vs detected irrigation events')
-        # plt.ylabel('Fields')
+        ax.figure.tight_layout()
+        
+        filename = f'irrigation timing heatmap ({stid})'
+        img_filename = os.path.join(png_dir,f'{filename}.png')
+        plt.savefig(img_filename, transparent = False,dpi = 150)
 
         df_combo_elec_bin = pd.concat([df_insitu_elec[stid],(df_insitu_irrigation[stid]*df_detected_seg['detected segments'].T).T.replace(0,np.nan)], axis=1)
         axes = df_combo_elec_bin.plot.line(figsize = [18,6],style=['c-','k*-'],linewidth = 3,fontsize = 16,grid = True)
         axes.legend(["water release", "detected irrigation episodes"]);
+
 
     # Creating the confusion matirx and other classification metrics
     irr_true = df_combo_bin_bps[f'observed data'].fillna(0)
