@@ -4,6 +4,19 @@
 
 Tracing farmers irrigation decision using satellite observations
 
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/ejalilva/AgroTrack
+cd AgroTrack
+```
+
+2. Install the package and all its dependencies:
+```bash
+pip install -e . # note the "." at the end
+```
+
 AgroTrack is a Python package designed to track farmers' irrigation decisions using thermal remote sensing. It employs hydrological similarity to identify nearby natural pixels and construct a delta LST (Land Surface Temperature) tensor. The package consists of multiple modules, with two key components for tracking farmers' decisions in time and space:
 
 1. **Modules for mapping irrigated areas:**
@@ -28,10 +41,3 @@ AgroTrack is a satellite data-driven toolbox to track farmers' irrigation decisi
 ![AgroTrack Workflow](static/agrotrack_workflow.svg)
 
 *Figure: AgroTrack workflow for tracing farmers' irrigation decisions from thermal satellite data. With just a bounding box and choice of thermal satellite mission (e.g., MODIS, VIIRS, or future thermal constellations), AgroTrack provides a comprehensive range of farmers' irrigation decisions, from strategic planning to operational details.*
-
-## Installation
-
-To install AgroTrack, use the following command:
-
-```bash
-pip install agrotrack
