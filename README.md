@@ -4,6 +4,8 @@
 
 Tracing farmers irrigation decision using satellite observations
 
+AgroTrack is a Python package designed to track farmers' irrigation decisions using thermal remote sensing. It employs hydrological similarity to identify nearby natural pixels and construct a delta LST (Land Surface Temperature) tensor. 
+
 ## Installation
 
 1. Clone the repository:
@@ -16,8 +18,8 @@ cd AgroTrack
 ```bash
 pip install -e . # note the "." at the end
 ```
-
-AgroTrack is a Python package designed to track farmers' irrigation decisions using thermal remote sensing. It employs hydrological similarity to identify nearby natural pixels and construct a delta LST (Land Surface Temperature) tensor. The package consists of multiple modules, with two key components for tracking farmers' decisions in time and space:
+## Tools
+The package consists of multiple modules, with two key components for tracking farmers' decisions in time and space:
 
 1. **Modules for mapping irrigated areas:**
    - **extract_natural_land_cover_lst:** This function identifies nearby hydrologically similar natural pixels and creates a baseline temperature by averaging their temperatures.
