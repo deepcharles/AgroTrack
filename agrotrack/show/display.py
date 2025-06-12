@@ -1,10 +1,20 @@
-import numpy as np
 from itertools import cycle
+
+import numpy as np
 from scipy import stats
 
-def display(signal, true_chg_pts, computed_chg_pts=None, computed_chg_pts_color="k", 
-            computed_chg_pts_linewidth=3, computed_chg_pts_linestyle="--", 
-            computed_chg_pts_alpha=1.0, show_piecewise_linear=True, **kwargs):
+
+def display(
+    signal,
+    true_chg_pts,
+    computed_chg_pts=None,
+    computed_chg_pts_color="k",
+    computed_chg_pts_linewidth=3,
+    computed_chg_pts_linestyle="--",
+    computed_chg_pts_alpha=1.0,
+    show_piecewise_linear=True,
+    **kwargs
+):
     """
     Display a signal and the change points provided in alternating colors.
     If another set of change points is provided, they are displayed with dashed vertical lines.
@@ -24,6 +34,7 @@ def display(signal, true_chg_pts, computed_chg_pts=None, computed_chg_pts_color=
     Returns:
         tuple: (figure, axarr) with a matplotlib.figure.Figure object and an array of Axes objects.
     """
+
     def pairwise(iterable):
         # pairwise('ABCDEFG') → AB BC CD DE EF FG
         iterator = iter(iterable)
@@ -31,9 +42,8 @@ def display(signal, true_chg_pts, computed_chg_pts=None, computed_chg_pts_color=
         for b in iterator:
             yield a, b
             a = b
-        
-    import matplotlib.pyplot as plt
 
+    import matplotlib.pyplot as plt
 
     if type(signal) != np.ndarray:
         signal = signal.values
@@ -49,17 +59,17 @@ def display(signal, true_chg_pts, computed_chg_pts=None, computed_chg_pts_color=
     fig, axarr = plt.subplots(n_features, sharex=True, **matplotlib_options)
     if n_features == 1:
         axarr = [axarr]
-        
+
     COLOR_CYCLE = ["#42f4b0", "#f44174"]
     for axe, sig in zip(axarr, signal.T):
         color_cycle = cycle(COLOR_CYCLE)
-        axe.plot(range(n_samples), sig, alpha=0.7,color='black', linewidth=2)
+        axe.plot(range(n_samples), sig, alpha=0.7, color="black", linewidth=2)
 
         bkps = [0] + sorted(true_chg_pts) + [n_samples]
         alpha = 0.2
 
         for (start, end), col in zip(pairwise(bkps), color_cycle):
-            if start!=end:
+            if start != end:
                 axe.axvspan(max(0, start - 0.5), end - 0.5, facecolor=col, alpha=alpha)
 
                 if show_piecewise_linear:
@@ -67,7 +77,7 @@ def display(signal, true_chg_pts, computed_chg_pts=None, computed_chg_pts_color=
                     y = sig[start:end]
                     slope, intercept, _, _, _ = stats.linregress(x, y)
                     fitted_line = slope * x + intercept
-                    axe.plot(x, fitted_line, color='red', linewidth=2, linestyle='-')
+                    axe.plot(x, fitted_line, color="red", linewidth=2, linestyle="-")
 
         if computed_chg_pts is not None:
             for bkp in computed_chg_pts:
